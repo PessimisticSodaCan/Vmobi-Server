@@ -8,29 +8,50 @@ app.use(bodyParser.json());
 
 
 
-app.post('/create_user', (req, res) => {
+app.post('/create_user', async (req, res) => {
     console.log('create_user request\n')
 
-    const {Fname, Lname, username, date, month, year, gender} = req.body;
-    
-    console.log(Fname)
-    console.log(Lname)
+    const {Fname, Lname, username, date, month, year, gender,emergencyContacts} = req.body;
 
-    const sql = 'INSERT INTO users (Fname, Lname, username, date, month, year, gender) VALUES (?, ?, ?, ?, ?, ?, ?)';
-    db.query(sql, [Fname, Lname, username, date, month, year, gender], (err, result) => {
+    
+
+    const user = 'INSERT INTO users (Fname, Lname, username, date, month, year, gender) VALUES (?, ?, ?, ?, ?, ?, ?)';
+    const result = await db.query(user, [Fname, Lname, username, date, month, year, gender], (err, result) => {
         if (err) {
             res.status(500).send(err);
         } else {
-            res.status(200).json({ message: 'User created successfully' });
+            const userID = (result.insertId)
+            let contactsQuery = 'INSERT INTO user_contacts (userID';
+            let placeholders = '(?';
+            let values = [userID];
+            const contactFields = ['FirstContact', 'SecondContact', 'ThirdContact', 'FourthContact'];
+
+            for (let i = 0; i < emergencyContacts.length; i++) {
+                contactsQuery += `, ${contactFields[i]}`;
+                placeholders += ', ?';
+                values.push(emergencyContacts[i]);
+            }
+            contactsQuery += ') VALUES ' + placeholders + ')';
+
+            db.query(contactsQuery, values, (err) => {
+                if (err) {
+                    res.status(500).send(err);
+                } else {
+                    res.status(200).json({ message: 'User created successfully' });
+                }
+            });
+            
         }
     });
+
+
 });
 
-app.get('/get_user', (req, res) => {
+app.get('/get_user', async (req, res) => {
     console.log('get_user request')
     const { username } = req.query;
     const sql = 'SELECT * FROM users WHERE username = ?';
-    db.query(sql, [username], (err, result) => {
+    const result = await db.query(sql, [username], (err, result) => {
         if (err) {
             res.status(500).send(err);
         } else if (result.length > 0) {
